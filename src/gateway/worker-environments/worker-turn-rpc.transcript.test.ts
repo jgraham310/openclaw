@@ -35,7 +35,7 @@ describe("worker transcript claim fences", () => {
         "worker-commit-race",
         "session-commit-race",
       );
-      const { claim, store } = claimWorkerPlacement({
+      const { claim, store } = await claimWorkerPlacement({
         environmentId: identity.environmentId,
         ownerEpoch: identity.ownerEpoch,
         sessionId: "session-commit-race",
@@ -196,7 +196,7 @@ describe("worker transcript claim fences", () => {
     "keeps an admitted transcript on its original store after configuration changes: %s",
     async (scenario) => {
       const identity = await support.seedAttachedIdentity("worker-source", "session-source");
-      const { claim, store } = claimWorkerPlacement({
+      const { claim, store } = await claimWorkerPlacement({
         environmentId: identity.environmentId,
         ownerEpoch: identity.ownerEpoch,
         sessionId: "session-source",

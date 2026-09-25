@@ -160,7 +160,7 @@ describe("shared GitHub publication requester alias bindings", () => {
           scopes: guestScopes,
           ...f.guestSource.session,
         });
-        const claim = holdWorkerTurn(f);
+        const claim = await holdWorkerTurn(f);
         const input = f.request("interrupted-visitor-identity", original.requester);
         const queued = await f.coordinator.requestForSession(input);
         const staff =
@@ -263,7 +263,7 @@ describe("shared GitHub publication requester alias bindings", () => {
         });
         const claim =
           backend === "repository"
-            ? holdWorkerTurn(f)
+            ? await holdWorkerTurn(f)
             : f.placements.claimTurn({
                 ...f.session,
                 agentId: "main",
@@ -367,7 +367,7 @@ describe("shared GitHub publication requester alias bindings", () => {
           scopes: guestScopes,
           ...f.guestSource.session,
         });
-        const claim = holdWorkerTurn(f);
+        const claim = await holdWorkerTurn(f);
         const queued = await f.coordinator.requestForSession(
           f.request("profile-preparation-recovery", original.requester),
         );
@@ -478,7 +478,7 @@ describe("shared GitHub publication requester alias bindings", () => {
         scopes: guestScopes,
         ...f.guestSource.session,
       });
-      const claim = holdWorkerTurn(f);
+      const claim = await holdWorkerTurn(f);
       const input = f.request("concurrent-alias-retry", original.requester);
       const later = "publication-later-alias@example.test";
       let winner: Awaited<ReturnType<typeof f.coordinator.requestForSession>> | undefined;

@@ -29,7 +29,7 @@ describe("worker inference reconnect source ownership", () => {
       const environmentId = "inference-reconnect-worker";
       const sessionId = "inference-reconnect-session";
       const environment = await support.seedAttachedIdentity(environmentId, sessionId);
-      const { claim, store: placements } = claimWorkerPlacement({
+      const { claim, store: placements } = await claimWorkerPlacement({
         environmentId,
         ownerEpoch: environment.ownerEpoch,
         sessionId,

@@ -3,10 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  closeOpenClawStateDatabaseForTest,
   openOpenClawStateDatabase,
   type OpenClawStateDatabase,
 } from "../../state/openclaw-state-db.js";
+import { closeStateDatabaseForTest } from "../../test-utils/database-cleanup.js";
 import type { WorkerSessionPlacementIdentity } from "./placement-record.js";
 import { MAX_RUNNING_WORKER_SESSION_TOOL_OPERATIONS } from "./placement-session-tool-operations.js";
 import {
@@ -36,12 +36,12 @@ describe("worker session placement gate", () => {
   });
 
   afterEach(async () => {
-    closeOpenClawStateDatabaseForTest();
+    await closeStateDatabaseForTest();
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  function activate(executionMode: "worker-turn" | "remote-exec" = "worker-turn") {
-    let placement = store.startDispatch({ ...SESSION, executionMode });
+  async function activate(executionMode: "worker-turn" | "remote-exec" = "worker-turn") {
+    let placement = await store.startDispatch({ ...SESSION, executionMode });
     placement = store.transition({
       sessionId: SESSION.sessionId,
       from: "requested",
@@ -80,8 +80,8 @@ describe("worker session placement gate", () => {
     });
   }
 
-  function preclaim(runId: string) {
-    const placement = activate();
+  async function preclaim(runId: string) {
+    const placement = await activate();
     return store.claimTurn({
       sessionId: placement.sessionId,
       agentId: placement.agentId,
@@ -92,12 +92,12 @@ describe("worker session placement gate", () => {
     });
   }
 
-  function bindingFor(claim: ReturnType<typeof preclaim>) {
+  function bindingFor(claim: Awaited<ReturnType<typeof preclaim>>) {
     return claim;
   }
 
-  it("rejects restart-inherited claims while preserving workspace recovery authority", () => {
-    const claim = preclaim("run-inherited-worker");
+  it("rejects restart-inherited claims while preserving workspace recovery authority", async () => {
+    const claim = await preclaim("run-inherited-worker");
     store.authorizeWorkerTurnTools(claim, ["sessions_send"]);
     store.updateAckCursors({ claim, liveEvent: 1 });
 
@@ -127,8 +127,8 @@ describe("worker session placement gate", () => {
     ]);
   });
 
-  it("does not classify a same-id claim from a different run as inherited", () => {
-    const first = preclaim("run-inherited-a");
+  it("does not classify a same-id claim from a different run as inherited", async () => {
+    const first = await preclaim("run-inherited-a");
     const gate = createWorkerSessionPlacementGate(store, {
       rejectExistingWorkerClaims: true,
     });
@@ -147,9 +147,9 @@ describe("worker session placement gate", () => {
     expect(gate.validateWorkerTurn(second)).toBe(true);
   });
 
-  it("fences a replaced exact claim when the durable run id is reused", () => {
+  it("fences a replaced exact claim when the durable run id is reused", async () => {
     const runId = "run-reused-worker";
-    const first = preclaim(runId);
+    const first = await preclaim(runId);
     const gate = createWorkerSessionPlacementGate(store);
     const firstBinding = bindingFor(first);
     store.releaseTurn(first);
@@ -176,9 +176,9 @@ describe("worker session placement gate", () => {
     );
   });
 
-  it("atomically retains the finishing cursor and workspace-result fence", () => {
+  it("atomically retains the finishing cursor and workspace-result fence", async () => {
     const runId = "run-worker-ack";
-    const claim = preclaim(runId);
+    const claim = await preclaim(runId);
     const gate = createWorkerSessionPlacementGate(store);
     const binding = bindingFor(claim);
 
@@ -200,8 +200,8 @@ describe("worker session placement gate", () => {
     expect(gate.validateWorkerTurn(binding)).toBe(false);
   });
 
-  it("hands a worker-owned pending result to recovery before owner revocation", () => {
-    const claim = preclaim("run-worker-revoked");
+  it("hands a worker-owned pending result to recovery before owner revocation", async () => {
+    const claim = await preclaim("run-worker-revoked");
     const gate = createWorkerSessionPlacementGate(store);
     gate.updateAckCursors({ claim, liveSeq: 1 });
 
@@ -219,8 +219,8 @@ describe("worker session placement gate", () => {
     });
   });
 
-  it("fails a Gateway-owned pending result before owner revocation", () => {
-    const placement = activate("remote-exec");
+  it("fails a Gateway-owned pending result before owner revocation", async () => {
+    const placement = await activate("remote-exec");
     const claim = store.claimTurn({
       sessionId: placement.sessionId,
       agentId: placement.agentId,
@@ -244,8 +244,8 @@ describe("worker session placement gate", () => {
     });
   });
 
-  it("preserves a staged Gateway-owned result during owner revocation", () => {
-    const placement = activate("remote-exec");
+  it("preserves a staged Gateway-owned result during owner revocation", async () => {
+    const placement = await activate("remote-exec");
     const claim = store.claimTurn({
       sessionId: placement.sessionId,
       agentId: placement.agentId,
@@ -275,9 +275,9 @@ describe("worker session placement gate", () => {
     });
   });
 
-  it("lets the admitted worker finish acknowledgements after draining closes admission", () => {
+  it("lets the admitted worker finish acknowledgements after draining closes admission", async () => {
     const runId = "run-worker-draining-ack";
-    const claim = preclaim(runId);
+    const claim = await preclaim(runId);
     const active = store.get(SESSION.sessionId);
     if (active?.state !== "active") {
       throw new Error("expected active placement");
@@ -299,7 +299,7 @@ describe("worker session placement gate", () => {
   });
 
   it("drains running session-tool operations before revoking their durable state", async () => {
-    const claim = preclaim("run-worker-tools");
+    const claim = await preclaim("run-worker-tools");
     const binding = bindingFor(claim);
     store.authorizeWorkerTurnTools(claim, ["sessions_spawn"]);
 
@@ -356,8 +356,8 @@ describe("worker session placement gate", () => {
     ).toEqual({ count: 0 });
   });
 
-  it("does not reconcile away a claim while its session operation is running", () => {
-    const claim = preclaim("run-worker-reconcile-tools");
+  it("does not reconcile away a claim while its session operation is running", async () => {
+    const claim = await preclaim("run-worker-reconcile-tools");
     const binding = bindingFor(claim);
     store.authorizeWorkerTurnTools(claim, ["sessions_send"]);
     expect(
@@ -413,8 +413,8 @@ describe("worker session placement gate", () => {
     ).toEqual({ count: 0 });
   });
 
-  it("caps running session operations across connection incarnations", () => {
-    const claim = preclaim("run-worker-tool-capacity");
+  it("caps running session operations across connection incarnations", async () => {
+    const claim = await preclaim("run-worker-tool-capacity");
     const binding = bindingFor(claim);
     store.authorizeWorkerTurnTools(claim, ["sessions_send"]);
     for (let index = 0; index < MAX_RUNNING_WORKER_SESSION_TOOL_OPERATIONS; index += 1) {
@@ -447,8 +447,8 @@ describe("worker session placement gate", () => {
     ).toMatchObject({ kind: "in-progress" });
   });
 
-  it("does not let a foreign store steal a live operation fence", () => {
-    const claim = preclaim("run-worker-restart");
+  it("does not let a foreign store steal a live operation fence", async () => {
+    const claim = await preclaim("run-worker-restart");
     const binding = bindingFor(claim);
     store.authorizeWorkerTurnTools(claim, ["sessions_spawn", "sessions_send"]);
     expect(
@@ -498,8 +498,8 @@ describe("worker session placement gate", () => {
     restarted.releaseTurn(claim);
   });
 
-  it("makes crash-ambiguous operations terminal before restart reconciliation", () => {
-    const claim = preclaim("run-worker-crash-recovery");
+  it("makes crash-ambiguous operations terminal before restart reconciliation", async () => {
+    const claim = await preclaim("run-worker-crash-recovery");
     const binding = bindingFor(claim);
     store.authorizeWorkerTurnTools(claim, ["sessions_send"]);
     expect(

@@ -140,7 +140,7 @@ describe("shared GitHub publication requester authority", () => {
     onTestFinished(captured.release);
     expect(source.authority.scopes).toEqual(["operator.admin"]);
     expect(captured.requester.snapshot.scopes).toEqual(guestScopes);
-    const claim = holdWorkerTurn(f);
+    const claim = await holdWorkerTurn(f);
     const accepted = await f.coordinator.requestForSession(
       f.request("narrow-requester", captured.requester),
     );
@@ -166,7 +166,7 @@ describe("shared GitHub publication requester authority", () => {
     async (backend) => {
       const f = await fixture(backend);
       expect(hasGatewayOperatorAccessPolicies(f.config)).toBe(false);
-      const claim = holdWorkerTurn(f);
+      const claim = await holdWorkerTurn(f);
       const guest = await f.coordinator.requestForSession(f.request("before-policy", f.guest));
       const staff = await f.coordinator.requestForSession(
         f.request("independent-staff", f.maintainer),
@@ -220,7 +220,7 @@ describe("shared GitHub publication requester authority", () => {
       placements: f.placements,
       getCommittedRuntimeConfig,
     });
-    const claim = holdWorkerTurn(f);
+    const claim = await holdWorkerTurn(f);
     const tentative = await coordinator.requestForSession(
       f.request("tentative-config", captured.requester),
     );
@@ -268,7 +268,7 @@ describe("shared GitHub publication requester authority", () => {
           scopes: guestScopes,
           ...f.guestSource.session,
         });
-        const claim = holdWorkerTurn(f);
+        const claim = await holdWorkerTurn(f);
         const accepted = await f.coordinator.requestForSession(
           f.request("policy-readiness", original.requester),
         );
@@ -398,7 +398,7 @@ describe("shared GitHub publication requester authority", () => {
     ),
   )("keeps the original requester on $backend $path publication", async ({ backend, path }) => {
     const f = await fixture(backend);
-    const claim = holdWorkerTurn(f);
+    const claim = await holdWorkerTurn(f);
     const guestInput = f.request("guest-publication", f.guest);
     const guest =
       path === "direct"
@@ -436,7 +436,7 @@ describe("shared GitHub publication requester authority", () => {
     "does not rebind a %s receipt when a different operator replays its key",
     async (backend) => {
       const f = await fixture(backend);
-      holdWorkerTurn(f);
+      await holdWorkerTurn(f);
       const input = f.request("immutable-requester", f.guest);
       const accepted = await f.coordinator.requestForSession(input);
       const stored = f.readRequester(accepted.requestId);
@@ -470,7 +470,7 @@ describe("shared GitHub publication requester authority", () => {
         pluginId: "visitor-access",
         grantId: first.grantId,
       });
-      const claim = holdWorkerTurn(f);
+      const claim = await holdWorkerTurn(f);
       const accepted = await f.coordinator.requestForSession(
         f.request("visitor-renewal", original.requester),
       );
@@ -517,7 +517,7 @@ describe("shared GitHub publication requester authority", () => {
           scopes: guestScopes,
           ...f.guestSource.session,
         });
-        const claim = holdWorkerTurn(f);
+        const claim = await holdWorkerTurn(f);
         const input = f.request("ended-visitor-grant", original.requester);
         const ended = await f.coordinator.requestForSession(input);
         const staff = await f.coordinator.requestForSession(
@@ -591,7 +591,7 @@ describe("shared GitHub publication requester authority", () => {
         scopes: guestScopes,
         grant: null,
       });
-      const claim = holdWorkerTurn(f);
+      const claim = await holdWorkerTurn(f);
       const accepted = await f.coordinator.requestForSession(f.request("active-guest", f.guest));
       expect(accepted.status).toBe("requested");
       expect(f.readRequester(accepted.requestId)).toEqual(f.guest.snapshot);
@@ -610,7 +610,7 @@ describe("shared GitHub publication requester authority", () => {
 
   it("does not adopt a merged requester's maintainer identity on restart", async () => {
     const f = await fixture("local");
-    const claim = holdWorkerTurn(f);
+    const claim = await holdWorkerTurn(f);
     const accepted = await f.coordinator.requestForSession(f.request("merged-requester", f.guest));
     await linkCanonicalUserProfileEmail("publication-guest@example.test", f.maintainerProfile);
     f.placements.releaseTurn(claim);
@@ -624,7 +624,7 @@ describe("shared GitHub publication requester authority", () => {
     "requires fresh admission for a %s request with no original requester",
     async (backend) => {
       const f = await fixture(backend);
-      const claim = holdWorkerTurn(f);
+      const claim = await holdWorkerTurn(f);
       const legacy = await f.coordinator.requestForSession(f.request("legacy-request", f.guest));
       f.removeRequesterSnapshot(legacy.requestId);
       f.placements.releaseTurn(claim);

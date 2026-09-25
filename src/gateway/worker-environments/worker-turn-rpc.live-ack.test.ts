@@ -18,7 +18,7 @@ async function recoveredTurn(ackedSeq = 5) {
   const environmentId = "worker-recovered-live-ack";
   const sessionId = "session-recovered-live-ack";
   const previousIdentity = await support.seedAttachedIdentity(environmentId, sessionId);
-  const previous = claimWorkerPlacement({
+  const previous = await claimWorkerPlacement({
     environmentId,
     ownerEpoch: previousIdentity.ownerEpoch,
     sessionId,

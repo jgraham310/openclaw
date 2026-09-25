@@ -27,6 +27,7 @@ type ClaimChange = { sessionId: string; facts?: WorkerSessionTurnClaimFacts };
 type RetainedClaim = {
   claim: WorkerSessionTurnClaim;
   facts?: WorkerSessionTurnClaimFacts;
+  revision: number;
   revoked: boolean;
   released: boolean;
   listeners: Set<() => void>;
@@ -124,6 +125,7 @@ function stageChange(db: DatabaseSync, change: ClaimChange): void {
       commit() {
         owner.pending.delete(change);
         for (const retained of owner.claims.get(change.sessionId) ?? []) {
+          retained.revision += 1;
           retained.facts = change.facts;
           retained.revoked ||= !allows(change, retained.claim);
         }
@@ -174,6 +176,33 @@ export function publishPlacementTurnClaimCleared(db: DatabaseSync, sessionId: st
   stageChange(db, { sessionId });
 }
 
+/** A later canonical publication wins over a delayed broker commit receipt. */
+export function preparePlacementTurnClaimPublication(
+  identity: DatabasePathIdentity,
+  sessionId: string,
+): (facts: WorkerSessionTurnClaimFacts | undefined) => void {
+  const owner = owners.get(identity.key);
+  const retained = Array.from(owner?.claims.get(sessionId) ?? []).map((claim) => ({
+    claim,
+    revision: claim.revision,
+  }));
+  return (facts) => {
+    if (!owner?.active || owners.get(identity.key) !== owner) {
+      return;
+    }
+    const change = { sessionId, facts };
+    for (const { claim, revision } of retained) {
+      if (claim.released || claim.revision !== revision) {
+        continue;
+      }
+      claim.revision += 1;
+      claim.facts = facts;
+      claim.revoked ||= !allows(change, claim.claim);
+      notifyRevoked(claim);
+    }
+  };
+}
+
 /** Prepare once through the placement reader; subsequent checks use this retained incarnation. */
 export async function preparePlacementTurnClaimAuthority(
   pathname: string,
@@ -190,6 +219,7 @@ export async function preparePlacementTurnClaimAuthority(
   Object.freeze(claim);
   const retained: RetainedClaim = {
     claim,
+    revision: 0,
     revoked: false,
     released: false,
     listeners: new Set(),

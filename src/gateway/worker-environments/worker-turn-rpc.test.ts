@@ -144,7 +144,7 @@ describe("worker environment service", () => {
     const environmentId = "worker-sensitive-environment";
     const sessionId = "session-sensitive-worker";
     const environmentIdentity = await support.seedAttachedIdentity(environmentId, sessionId);
-    const { claim, store } = claimWorkerPlacement({
+    const { claim, store } = await claimWorkerPlacement({
       environmentId,
       ownerEpoch: environmentIdentity.ownerEpoch,
       runId: "run-worker-receipts",
@@ -225,7 +225,7 @@ describe("worker environment service", () => {
     const environmentId = "worker-admission-replacement";
     const sessionId = "session-admission-replacement";
     const environmentIdentity = await support.seedAttachedIdentity(environmentId, sessionId);
-    const { claim: first, store } = claimWorkerPlacement({
+    const { claim: first, store } = await claimWorkerPlacement({
       environmentId,
       ownerEpoch: environmentIdentity.ownerEpoch,
       runId: "run-admission-replacement",
@@ -325,7 +325,7 @@ describe("worker environment service", () => {
     const environmentId = "worker-inherited-claim";
     const sessionId = "session-inherited-claim";
     const environmentIdentity = await support.seedAttachedIdentity(environmentId, sessionId);
-    const { claim, store } = claimWorkerPlacement({
+    const { claim, store } = await claimWorkerPlacement({
       environmentId,
       ownerEpoch: environmentIdentity.ownerEpoch,
       sessionId,
@@ -406,7 +406,7 @@ describe("worker environment service", () => {
     const environmentId = "worker-claim-credential";
     const sessionId = "session-claim-credential";
     const environmentIdentity = await support.seedAttachedIdentity(environmentId, sessionId);
-    const { claim: first, store } = claimWorkerPlacement({
+    const { claim: first, store } = await claimWorkerPlacement({
       environmentId,
       ownerEpoch: environmentIdentity.ownerEpoch,
       sessionId,
@@ -480,7 +480,7 @@ describe("worker environment service", () => {
     const environmentId = "worker-claim-inference";
     const sessionId = "session-claim-inference";
     const environmentIdentity = await support.seedAttachedIdentity(environmentId, sessionId);
-    const { claim: first, store } = claimWorkerPlacement({
+    const { claim: first, store } = await claimWorkerPlacement({
       environmentId,
       ownerEpoch: environmentIdentity.ownerEpoch,
       sessionId,

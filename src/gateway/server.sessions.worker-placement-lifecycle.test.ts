@@ -786,7 +786,11 @@ test.each(["generation", "claim"] as const)(
     bundleMcpRuntimeMocks.disposeSessionMcpRuntime.mockImplementationOnce(async () => {
       const canonicalKey = loadSessionEntry(sessionKey).canonicalKey ?? sessionKey;
       if (change === "generation") {
-        placementStore.startDispatch({ sessionId, agentId: "main", sessionKey: canonicalKey });
+        await placementStore.startDispatch({
+          sessionId,
+          agentId: "main",
+          sessionKey: canonicalKey,
+        });
       } else {
         placementStore.claimTurn({
           sessionId,

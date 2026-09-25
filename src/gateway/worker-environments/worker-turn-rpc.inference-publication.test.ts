@@ -102,7 +102,7 @@ describe("worker inference inventory publication", () => {
         to: "attached",
         patch: support.attachedPatch(environmentId, sessionId),
       });
-      const { claim, store: placements } = claimWorkerPlacement({
+      const { claim, store: placements } = await claimWorkerPlacement({
         environmentId,
         ownerEpoch: attached.ownerEpoch,
         sessionId,

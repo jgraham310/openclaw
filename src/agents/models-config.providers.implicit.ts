@@ -110,18 +110,6 @@ function resolveLiveProviderCatalogTimeoutMs(env: NodeJS.ProcessEnv): number | n
   return /^[+]?\d+$/.test(raw) && Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 15_000;
 }
 
-function mergeImplicitProviderSet(
-  target: Record<string, ProviderConfig>,
-  additions: Record<string, ProviderConfig> | undefined,
-): void {
-  if (!additions) {
-    return;
-  }
-  for (const [key, value] of Object.entries(additions)) {
-    target[key] = value;
-  }
-}
-
 function mergeImplicitProviderConfig(params: {
   providerId: string;
   existing: ProviderConfig | undefined;
@@ -139,19 +127,6 @@ function mergeImplicitProviderConfig(params: {
   return mergeProviderModels(implicit, existing, {
     providerId,
     sourceModelFields: params.sourceModelFields,
-  });
-}
-
-function resolveImplicitProviderAuthMarker(params: {
-  ctx: ImplicitProviderContext;
-  providerId: string;
-  provider: ProviderConfig;
-}): ProviderConfig {
-  return resolveMissingProviderApiKey({
-    providerKey: params.providerId,
-    provider: params.provider,
-    env: params.ctx.env,
-    profileApiKey: undefined,
   });
 }
 
@@ -353,10 +328,11 @@ async function resolvePluginImplicitProviders(
         implicit: implicitProvider,
         sourceModelFields: ctx.sourceModelFields,
       });
-      discovered[providerId] = resolveImplicitProviderAuthMarker({
-        ctx,
-        providerId,
+      discovered[providerId] = resolveMissingProviderApiKey({
+        providerKey: providerId,
         provider: mergedProvider,
+        env: ctx.env,
+        profileApiKey: undefined,
       });
     }
   }
@@ -692,7 +668,7 @@ export async function resolveImplicitProviders(
       )
     : undefined;
   for (const order of PLUGIN_DISCOVERY_ORDERS) {
-    mergeImplicitProviderSet(
+    Object.assign(
       providers,
       await resolvePluginImplicitProviders(
         context,

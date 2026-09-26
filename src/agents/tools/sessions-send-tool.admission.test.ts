@@ -89,15 +89,18 @@ describe("sessions_send dispatch admission", () => {
       { agentId: "main", sessionKey: directKey },
       { sessionId: "owner-direct-session", updatedAt: Date.now() },
     );
-    const callGateway = vi.fn(async (request: Parameters<AgentToolGatewayRequestCaller>[0]) => {
-      if (request.method === "sessions.resolve") {
-        return { key: directKey, agentId: "main" };
-      }
-      if (request.method === "sessions.list") {
-        return { sessions: [{ key: directKey, agentId: "main", kind: "direct" }] };
-      }
-      throw new Error(`Unexpected Gateway method: ${request.method}`);
-    });
+    const callGateway = vi.fn();
+    callGateway.mockImplementation(
+      async (request: Parameters<AgentToolGatewayRequestCaller>[0]) => {
+        if (request.method === "sessions.resolve") {
+          return { key: directKey, agentId: "main" };
+        }
+        if (request.method === "sessions.list") {
+          return { sessions: [{ key: directKey, agentId: "main", kind: "direct" }] };
+        }
+        throw new Error(`Unexpected Gateway method: ${request.method}`);
+      },
+    );
     const result = await createSessionsSendTool({
       agentId: "peer",
       agentSessionKey: "agent:peer:main",

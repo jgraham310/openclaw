@@ -466,6 +466,19 @@ export function createSessionsSendTool(opts?: SessionsSendToolOptions): AnyAgent
           unresolvedDisplayKey,
         );
       }
+      // Agent reports must not be admitted as new turns in another agent's
+      // human-facing conversation. Return them through a parent-owned task or
+      // the target agent's internal main session instead.
+      if (
+        normalizeAgentId(requesterAgentId) !== normalizeAgentId(targetAgentId) &&
+        parseSessionDeliveryRoute(resolvedKey)
+      ) {
+        return sendFailure(
+          "forbidden",
+          "Cross-agent delivery to a human-facing session is disabled. Return the result through the parent task or the target agent's internal main session.",
+          unresolvedDisplayKey,
+        );
+      }
       const mayUseRequesterForLiteralSentinel =
         isLiteralUnscopedMainTarget && normalizeAgentId(targetAgentId) === requesterAgentId;
       const rawRequesterSessionKey = opts?.agentSessionKey ? effectiveRequesterKey : undefined;

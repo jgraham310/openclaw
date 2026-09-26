@@ -78,6 +78,36 @@ describe("sessions_send dispatch admission", () => {
     await state.cleanup();
   });
 
+  it("rejects cross-agent delivery into a human-facing direct session", async () => {
+    const directKey = "agent:main:signal:direct:owner";
+    const crossAgentConfig = {
+      ...config,
+      agents: { ownership: "explicit" as const, entries: { main: {}, peer: {} } },
+    } satisfies OpenClawConfig;
+    setRuntimeConfigSnapshot(crossAgentConfig);
+    await replaceSessionEntry(
+      { agentId: "main", sessionKey: directKey },
+      { sessionId: "owner-direct-session", updatedAt: Date.now() },
+    );
+    const callGateway = vi.fn(async (request: Parameters<AgentToolGatewayRequestCaller>[0]) => {
+      if (request.method === "sessions.resolve") {
+        return { key: directKey, agentId: "main" };
+      }
+      if (request.method === "sessions.list") {
+        return { sessions: [{ key: directKey, agentId: "main", kind: "direct" }] };
+      }
+      throw new Error(`Unexpected Gateway method: ${request.method}`);
+    });
+    const result = await createSessionsSendTool({
+      agentId: "peer",
+      agentSessionKey: "agent:peer:main",
+      config: crossAgentConfig,
+      callGateway,
+    }).execute("cross-agent-direct", { sessionKey: directKey, message: "Agent report" });
+    expect(result.details, JSON.stringify(result.details)).toMatchObject({ status: "forbidden" });
+    expect(callGateway).not.toHaveBeenCalledWith(expect.objectContaining({ method: "agent" }));
+  });
+
   const callerKeys = [requesterSessionKey, "agent:main:telegram:direct:peer-1"];
   it.each(callerKeys)("retains accepted reply source (%s)", async (sourceKey) => {
     if (sourceKey !== requesterSessionKey) {

@@ -275,7 +275,11 @@ export async function executeMutableUpdate(
           preManagedServiceStop.stopped ||
           preManagedServiceStop.serviceUpdateVerdict?.kind === "owned" ||
           preManagedServiceStop.blockMessage ||
-          mutableUpdateGatewayServiceBlock({ preManagedServiceStop }) ||
+          (await mutableUpdateGatewayServiceBlock({
+            preManagedServiceStop,
+            root: params.managedServiceRoot ? params.root : mutationRoot,
+            runId: opts.run?.runId,
+          })) ||
           !preManagedServiceStop.inspected ||
           !preManagedServiceStop.running ||
           !params.shouldRestart
@@ -335,12 +339,16 @@ export async function executeMutableUpdate(
       });
     }
 
-    const serviceEnvBlock = mutableUpdateGatewayServiceBlock({ preManagedServiceStop });
+    const serviceEnvBlock = await mutableUpdateGatewayServiceBlock({
+      preManagedServiceStop,
+      root: params.root,
+      runId: opts.run?.runId,
+    });
     if (serviceEnvBlock) {
       params.stop();
       throw new UpdatePreMutationError(
         "managed-service-preflight",
-        serviceEnvBlock.message,
+        formatUpdateAncestryBlockMessage(serviceEnvBlock.message),
         serviceEnvBlock,
       );
     }

@@ -90,6 +90,10 @@ type CleanStaleGatewayProcessesOptions = {
 const cleanStaleGatewayProcessesSync = vi.hoisted(() =>
   vi.fn<(port?: number, options?: CleanStaleGatewayProcessesOptions) => number[]>(() => []),
 );
+const nativeServiceMembership = vi.hoisted(() => vi.fn<() => "inside" | "outside" | "unknown">());
+vi.mock("./service-process-membership.js", () => ({
+  inspectServiceProcessMembershipSync: nativeServiceMembership,
+}));
 const getSelfAndAncestorPidsSync = vi.hoisted(() => vi.fn<() => Set<number>>());
 const launchdCallerPids = vi.hoisted(() => {
   // Keep the synthetic caller graph separate from host PIDs and both service fixture PIDs.
@@ -395,7 +399,8 @@ beforeEach(() => {
   });
   cleanStaleGatewayProcessesSync.mockReset();
   getSelfAndAncestorPidsSync.mockReset();
-  getSelfAndAncestorPidsSync.mockReturnValue(new Set(launchdCallerPids));
+  getSelfAndAncestorPidsSync.mockReturnValue(new Set([...launchdCallerPids, 1]));
+  nativeServiceMembership.mockReset().mockReturnValue("outside");
   cleanStaleGatewayProcessesSync.mockImplementation((_port, options) => {
     state.cleanupProtectedPids.push(options?.resolveProtectedPid?.() ?? options?.protectedPid);
     return [];
@@ -430,6 +435,7 @@ beforeEach(() => {
 
 export {
   state,
+  nativeServiceMembership,
   launchdRestartHandoffState,
   launchdSystemState,
   cleanStaleGatewayProcessesSync,

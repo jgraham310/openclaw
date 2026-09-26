@@ -71,11 +71,6 @@ function parseJsonNumberString(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function parseJsonIntegerString(value: string): number | undefined {
-  const parsed = parseJsonNumberString(value);
-  return parsed !== undefined && Number.isSafeInteger(parsed) ? parsed : undefined;
-}
-
 function getSubSchemaValidator(schema: JsonSchemaObject): ReturnType<typeof Compile> | undefined {
   if (!isValidatorSchema(schema)) {
     return undefined;
@@ -89,28 +84,14 @@ function getSubSchemaValidator(schema: JsonSchemaObject): ReturnType<typeof Comp
 
 function coercePrimitiveByType(value: unknown, type: string): unknown {
   switch (type) {
-    case "number": {
-      if (value === null) {
-        return 0;
-      }
-      if (typeof value === "string" && value.trim() !== "") {
-        const parsed = parseJsonNumberString(value);
-        if (parsed !== undefined) {
-          return parsed;
-        }
-      }
-      if (typeof value === "boolean") {
-        return value ? 1 : 0;
-      }
-      return value;
-    }
+    case "number":
     case "integer": {
       if (value === null) {
         return 0;
       }
-      if (typeof value === "string" && value.trim() !== "") {
-        const parsed = parseJsonIntegerString(value);
-        if (parsed !== undefined) {
+      if (typeof value === "string") {
+        const parsed = parseJsonNumberString(value);
+        if (parsed !== undefined && (type === "number" || Number.isSafeInteger(parsed))) {
           return parsed;
         }
       }
@@ -150,23 +131,7 @@ function coercePrimitiveByType(value: unknown, type: string): unknown {
       }
       return value;
     }
-    case "array": {
-      if (
-        typeof value === "string" &&
-        value.trim() !== "" &&
-        value.length <= MAX_JSON_COERCE_LENGTH
-      ) {
-        try {
-          const parsed: unknown = JSON.parse(value);
-          if (Array.isArray(parsed)) {
-            return parsed;
-          }
-        } catch {
-          // Not valid JSON; leave as-is for the validator to reject.
-        }
-      }
-      return value;
-    }
+    case "array":
     case "object": {
       if (
         typeof value === "string" &&
@@ -175,7 +140,7 @@ function coercePrimitiveByType(value: unknown, type: string): unknown {
       ) {
         try {
           const parsed: unknown = JSON.parse(value);
-          if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+          if (matchesJsonType(parsed, type)) {
             return parsed;
           }
         } catch {
@@ -318,26 +283,24 @@ function coerceWithJsonSchema(value: unknown, schema: JsonSchemaObject): unknown
 }
 
 function getValidator(schema: Tool["parameters"]): ReturnType<typeof Compile> {
-  const key = schema as object;
-  const cached = validatorCache.get(key);
+  const cached = validatorCache.get(schema);
   if (cached) {
     return cached;
   }
   const validator = Compile(schema);
-  validatorCache.set(key, validator);
+  validatorCache.set(schema, validator);
   return validator;
 }
 
 function formatValidationPath(error: TLocalizedValidationError): string {
+  const path = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
   if (error.keyword === "required") {
     const requiredProperty = (error.params as { requiredProperties?: string[] })
       .requiredProperties?.[0];
     if (requiredProperty) {
-      const basePath = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
-      return basePath ? `${basePath}.${requiredProperty}` : requiredProperty;
+      return path ? `${path}.${requiredProperty}` : requiredProperty;
     }
   }
-  const path = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
   return path || "root";
 }
 

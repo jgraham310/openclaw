@@ -88,15 +88,11 @@ enum OverlayPanelFactory {
         duration: TimeInterval = 0.16,
         completion: @escaping @MainActor @Sendable () -> Void)
     {
-        let target = window.frame.offsetBy(dx: offsetX, dy: offsetY)
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = duration
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            window.animator().setFrame(target, display: true)
-            window.animator().alphaValue = 0
-        } completionHandler: {
-            Task { @MainActor in completion() }
-        }
+        self.animateDismiss(
+            window: window,
+            to: window.frame.offsetBy(dx: offsetX, dy: offsetY),
+            duration: duration,
+            completion: completion)
     }
 
     @MainActor

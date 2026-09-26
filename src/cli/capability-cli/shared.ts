@@ -27,6 +27,21 @@ import { parseTimeoutMsWithFallback } from "../parse-timeout.js";
 import type { CapabilityTransport } from "./metadata.js";
 import { emitJsonOrText } from "./output.js";
 
+export function runCapabilityCommand<T>(
+  json: boolean | undefined,
+  format: ((value: T) => string) | undefined,
+  run: () => T | Promise<T>,
+): Promise<void> {
+  return runCommandWithRuntime(defaultRuntime, async () => {
+    emitJsonOrText(
+      defaultRuntime,
+      Boolean(json),
+      await run(),
+      format ?? ((value) => JSON.stringify(value, null, 2)),
+    );
+  });
+}
+
 export function registerLocalProvidersCommand<T>(
   parent: Command,
   description: string,
@@ -38,17 +53,16 @@ export function registerLocalProvidersCommand<T>(
     .description(description)
     .option("--agent <id>", "Agent whose provider state should be inspected")
     .option("--json", "Output JSON", false)
-    .action(async (opts, command) => {
-      await runCommandWithRuntime(defaultRuntime, async () => {
+    .action((opts, command) =>
+      runCapabilityCommand(opts.json, format, () => {
         const cfg = getRuntimeConfig();
         const agentId = resolveCapabilityProviderAgentId(
           cfg,
           resolveCapabilityAgentOption(command, opts.agent),
         );
-        const result = await collect(cfg, agentId);
-        emitJsonOrText(defaultRuntime, Boolean(opts.json), result, format);
-      });
-    });
+        return collect(cfg, agentId);
+      }),
+    );
 }
 
 export function resolveTransport(opts: {

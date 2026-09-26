@@ -21,23 +21,22 @@ import {
   resolveProviderHttpRequestConfig,
   sanitizeConfiguredModelProviderRequest,
 } from "../../plugin-sdk/provider-http.js";
-import { defaultRuntime } from "../../runtime.js";
 import {
   generateVideo,
   listRuntimeVideoGenerationProviders,
 } from "../../video-generation/runtime.js";
 import type { VideoGenerationResolution } from "../../video-generation/types.js";
-import { runCommandWithRuntime } from "../cli-utils.js";
 import { getModelsCommandSecretTargetIds } from "../command-secret-targets.js";
 import { publishOutputFileAtomically, writeOutputAsset } from "../media-output.js";
 import { prepareLocalCapabilityAccountSecrets } from "./local-account-secrets.js";
 import type { CapabilityEnvelope } from "./metadata.js";
-import { emitJsonOrText, formatEnvelopeForText } from "./output.js";
+import { formatEnvelopeForText } from "./output.js";
 import {
   parseOptionalFiniteNumber,
   parseOptionalTimeoutMs,
   providerHasGenericConfig,
   registerLocalProvidersCommand,
+  runCapabilityCommand,
   requireProviderModelOverride,
   resolveCapabilityAgentOption,
   resolveCapabilityProviderAgentId,
@@ -279,9 +278,9 @@ export function registerVideoCapabilityCommands(capability: Command): void {
       "Agent whose saved provider auth is used (default: agents.defaults.systemAgent.agentId, then the sole agent)",
     )
     .option("--json", "Output JSON", false)
-    .action(async (opts, command) => {
-      await runCommandWithRuntime(defaultRuntime, async () => {
-        const result = await runVideoGenerate({
+    .action((opts, command) =>
+      runCapabilityCommand(opts.json, formatEnvelopeForText, () => {
+        return runVideoGenerate({
           prompt: String(opts.prompt),
           agent: resolveCapabilityAgentOption(command, opts.agent),
           model: opts.model as string | undefined,
@@ -294,9 +293,8 @@ export function registerVideoCapabilityCommands(capability: Command): void {
           watermark: opts.watermark === true ? true : undefined,
           timeoutMs: parseOptionalTimeoutMs(opts.timeoutMs),
         });
-        emitJsonOrText(defaultRuntime, Boolean(opts.json), result, formatEnvelopeForText);
-      });
-    });
+      }),
+    );
 
   video
     .command("describe")
@@ -305,16 +303,15 @@ export function registerVideoCapabilityCommands(capability: Command): void {
     .option("--agent <id>", "Agent whose model and auth state should be used")
     .option("--model <provider/model>", "Model override")
     .option("--json", "Output JSON", false)
-    .action(async (opts, command) => {
-      await runCommandWithRuntime(defaultRuntime, async () => {
-        const result = await runVideoDescribe({
+    .action((opts, command) =>
+      runCapabilityCommand(opts.json, formatEnvelopeForText, () => {
+        return runVideoDescribe({
           file: String(opts.file),
           agent: resolveCapabilityAgentOption(command, opts.agent),
           model: opts.model as string | undefined,
         });
-        emitJsonOrText(defaultRuntime, Boolean(opts.json), result, formatEnvelopeForText);
-      });
-    });
+      }),
+    );
 
   registerLocalProvidersCommand(
     video,

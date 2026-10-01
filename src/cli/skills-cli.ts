@@ -49,7 +49,6 @@ import {
   proposeCreateSkill,
   proposeUpdateSkill,
   quarantineSkillProposal,
-  purgeRejectedSkillProposal,
   readSkillProposalDraftDirectory,
   readSkillProposalDraftFile,
   rejectSkillProposal,
@@ -72,7 +71,6 @@ import { formatDocsHelp } from "./help-format.js";
 import { resolveInstallPolicyWarningAcknowledgementCliOptions } from "./install-policy-warning-acknowledgement.js";
 import { exitCliAfterOutput } from "./one-shot-exit.js";
 import { setCommandJsonMode } from "./program/json-mode.js";
-import { applyParentDefaultHelpAction } from "./program/parent-default-help.js";
 import {
   formatSkillCuratorStatus,
   formatSkillInfo,
@@ -82,6 +80,7 @@ import {
 import { registerSkillsLibraryCli } from "./skills-library-cli.js";
 import { isSkillsMachineOutput } from "./skills-output-mode.js";
 import { registerSkillsSearchCli } from "./skills-search-cli.js";
+import { registerWorkshopPurgeCommand } from "./skills-workshop-purge-cli.js";
 
 type ResolvedClawHubSkillVerificationTarget = Extract<
   Awaited<ReturnType<typeof resolveClawHubSkillVerificationTarget>>,
@@ -1100,9 +1099,7 @@ export function registerSkillsCli(program: Command) {
             command,
             async ({ agentId, config, workspaceDir }) => {
               const reviewed =
-                name === "reject"
-                  ? await inspectSkillProposal(proposalId, { agentId, config })
-                  : undefined;
+                name === "reject" && (await inspectSkillProposal(proposalId, { agentId, config }));
               if (name === "reject" && !reviewed) {
                 throw new Error(`Skill proposal not found: ${proposalId}`);
               }
@@ -1121,35 +1118,7 @@ export function registerSkillsCli(program: Command) {
       );
   }
 
-  workshop
-    .command("purge")
-    .description("Permanently remove a rejected proposal and its retained history")
-    .argument("<proposal-id>", "Rejected proposal id")
-    .option("--json", "Output as JSON", false)
-    .action((proposalId: string, opts: { json?: boolean; agent?: string }, command: Command) =>
-      runWorkshopAction(
-        opts,
-        command,
-        async ({ agentId, config, workspaceDir }) => {
-          return await purgeRejectedSkillProposal({
-            agentId,
-            eventActor: { type: "system", id: "cli" },
-            workspaceDir,
-            config,
-            proposalId,
-          });
-        },
-        (result) => `Purged ${result.proposalId}\n`,
-      ),
-    );
-
-  for (const command of workshop.commands) {
-    command.option(
-      "--agent <id>",
-      "Target agent workspace (defaults to cwd-inferred, then default agent)",
-    );
-  }
-  applyParentDefaultHelpAction(workshop);
+  registerWorkshopPurgeCommand(workshop, runWorkshopAction);
 
   skills
     .command("list")

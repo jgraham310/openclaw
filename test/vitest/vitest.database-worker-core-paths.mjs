@@ -350,6 +350,7 @@ export const databaseWorkerCoreTestFiles = [
   "src/skills/workshop/service-evaluation.test.ts",
   "src/skills/workshop/service-keyword-guidance.test.ts",
   "src/skills/workshop/service-lifecycle-hooks.test.ts",
+  "src/skills/workshop/service-purge.test.ts",
   "src/skills/workshop/service.test.ts",
   "src/skills/workshop/workspace-skill-read.test.ts",
   "src/state/agent-deletion-cleanup.test.ts",
